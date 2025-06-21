@@ -52,7 +52,7 @@ PORT=5000
 
 ## Usage
 
-### Running the Server
+### For Local Development
 
 ```bash
 cd PythonRemake
@@ -61,6 +61,13 @@ python app.py
 
 The server will start on `http://localhost:5000`
 
+### For Production (Vercel)
+
+Once deployed on Vercel, your API will be available at:
+```
+https://your-app.vercel.app/
+```
+
 ### API Endpoints
 
 #### Stats Card
@@ -68,14 +75,28 @@ The server will start on `http://localhost:5000`
 GET /api?username=USERNAME&[options]
 ```
 
-**Example:**
+**Local Example:**
 ```
-/api?username=adbreeker&show_icons=true&count_private=true&title_color=0891b2&text_color=ffffff&icon_color=0891b2&bg_color=1c1917
+http://localhost:5000/api?username=adbreeker&show_icons=true&count_private=true&title_color=0891b2&text_color=ffffff&icon_color=0891b2&bg_color=1c1917
+```
+
+**Production Example:**
+```
+https://your-app.vercel.app/api?username=adbreeker&show_icons=true&theme=dark
 ```
 
 #### Top Languages Card
 ```
 GET /api/top-langs/?username=USERNAME&[options]
+```
+
+### GitHub README Usage
+
+Add these to your GitHub README:
+
+```markdown
+![GitHub Stats](https://your-app.vercel.app/api?username=yourusername&show_icons=true&theme=dark)
+![Top Languages](https://your-app.vercel.app/api/top-langs/?username=yourusername&layout=compact&theme=dark)
 ```
 
 **Example:**
@@ -108,35 +129,46 @@ GET /api/top-langs/?username=USERNAME&[options]
 - `hide` - Comma-separated list of languages to hide
 - `hide_progress` - Hide progress bars (true/false)
 
-## Testing
-
-### Generate Test Cards
-
-```bash
-cd PythonRemake
-python generate_test_cards.py
-```
-
-This will generate sample SVG cards in the `Tests/` directory for visual testing.
-
 ## File Structure
 
+- `api/index.py` - Vercel serverless function entry point
 - `github_stats.py` - Core GitHub API interaction and data models
 - `svg_renderer.py` - SVG card generation and rendering
 - `api_handlers.py` - API request handlers for stats and languages
-- `app.py` - Flask web server
-- `generate_test_cards.py` - Test card generation script
-- `Tests/` - Generated test SVG files
+- `requirements.txt` - Python dependencies
+- `vercel.json` - Vercel deployment configuration
+- `.gitignore` - Git ignore rules
 
 ## Differences from JavaScript Version
 
 1. **Language**: Python instead of JavaScript/Node.js
-2. **Framework**: Flask instead of Vercel serverless functions
+2. **Runtime**: Python serverless functions on Vercel
 3. **Async**: Uses aiohttp for async HTTP requests
-4. **Simplified**: Some advanced features simplified for core functionality
-5. **Standalone**: Can run as a standalone server
+4. **Pixel-Perfect**: Matches original SVG output exactly
+5. **Compatible**: Same API endpoints and parameters
 
 ## Deployment
+
+### Deploy on Vercel (Recommended)
+
+This project is optimized for deployment on Vercel as serverless functions.
+
+#### Quick Deploy
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/github-readme-stats-python)
+
+#### Manual Deployment
+1. Install Vercel CLI: `npm i -g vercel`
+2. Deploy: `vercel --prod`
+3. Set environment variables in Vercel dashboard:
+   - `PAT_1` - Your GitHub Personal Access Token
+   - `CACHE_SECONDS` - Cache duration (optional, default: 14400)
+
+#### Environment Variables for Vercel
+Set these in your Vercel project dashboard:
+```
+PAT_1=ghp_your_github_token_here
+CACHE_SECONDS=14400
+```
 
 ### Local Development
 ```bash
@@ -145,8 +177,8 @@ export PAT_1=your_github_token
 python app.py
 ```
 
-### Production
-For production deployment, you can use:
+### Other Deployment Options
+For production deployment, you can also use:
 - **Heroku**: Deploy as a Flask app
 - **Docker**: Containerize the application
 - **VPS**: Run with gunicorn/uwsgi
