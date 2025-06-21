@@ -1,14 +1,19 @@
 {
-  "functions": {
-    "api/*.js": {
-      "memory": 128,
-      "maxDuration": 10
-    }
-  },
-  "redirects": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/",
-      "destination": "https://github.com/anuraghazra/github-readme-stats"
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
     }
   ]
 }
