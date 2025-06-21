@@ -90,20 +90,22 @@ def index():
             <li><strong>/api/top-langs</strong> - Top programming languages card</li>
         </ul>
         
-        <h2>🎨 Example Usage</h2>
-        
-        <div class="example">
+        <h2>🎨 Example Usage</h2>        <div class="example">
             <h3>Stats Card</h3>
-            <code>/api?username=octocat&show_icons=true&theme=dark</code>
+            <code>/api?username=adbreeker&show_icons=true&theme=dark</code>
             <br><br>
-            <img src="/api?username=octocat&show_icons=true&theme=dark" alt="Stats Card Example" style="max-width: 100%;">
+            <img src="/api?username=adbreeker&show_icons=true&theme=dark" alt="Stats Card Example" style="max-width: 100%;">
+            <br><br>
+            <p><em>Replace 'adbreeker' with any GitHub username to see their stats</em></p>
         </div>
         
         <div class="example">
             <h3>Top Languages</h3>
-            <code>/api/top-langs?username=octocat&layout=compact&theme=dark</code>
+            <code>/api/top-langs?username=adbreeker&layout=compact&theme=dark</code>
             <br><br>
-            <img src="/api/top-langs?username=octocat&layout=compact&theme=dark" alt="Languages Card Example" style="max-width: 100%;">
+            <img src="/api/top-langs?username=adbreeker&layout=compact&theme=dark" alt="Languages Card Example" style="max-width: 100%;">
+            <br><br>
+            <p><em>Replace 'adbreeker' with any GitHub username to see their top languages</em></p>
         </div>
         
         <h2>🔧 Configuration</h2>
