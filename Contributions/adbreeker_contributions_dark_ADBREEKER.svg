@@ -2,7 +2,7 @@
 <defs>
 <style>
 .contrib-square { stroke-width: 1; stroke: rgba(27,31,35,0.06); rx: 2; ry: 2; }
-.eating-line { fill: #ff8c00; }
+.eating-line { fill: #000000; }
 </style>
 </defs>
 <rect id="square-0-0" x="10" y="10" width="11" height="11" fill="#006d32" class="contrib-square"><title>3 contributions on Jun 23, 2024</title>
@@ -991,6 +991,6 @@
 <rect id="square-52-0" x="686" y="10" width="11" height="11" fill="#006d32" class="contrib-square"><title>3 contributions on Jun 22, 2025</title>
 <animate attributeName="fill" values="#006d32;#006d32;#161b22;#161b22;#161b22;#006d32;#006d32" dur="8s" keyTimes="0.000;0.001;0.006;0.750;0.995;1.000;1.000" repeatCount="indefinite"/>
 </rect>
-<rect class="eating-line" x="-1" y="-3" width="11" height="115" rx="2" opacity="0.7"><animateTransform attributeName="transform" type="translate" values="0,0;349,0;0,0;349,0;0,0" dur="8s" keyTimes="0;0.25;0.5;0.75;1" repeatCount="indefinite"/></rect>
-<rect class="eating-line" x="699" y="-3" width="11" height="115" rx="2" opacity="0.7"><animateTransform attributeName="transform" type="translate" values="0,0;-351,0;0,0;-351,0;0,0" dur="8s" keyTimes="0;0.25;0.5;0.75;1" repeatCount="indefinite"/></rect>
+<rect class="eating-line" x="-1" y="-3" width="11" height="115" rx="2" opacity="0.05"><animateTransform attributeName="transform" type="translate" values="0,0;349,0;0,0;349,0;0,0" dur="8s" keyTimes="0;0.25;0.5;0.75;1" repeatCount="indefinite"/></rect>
+<rect class="eating-line" x="699" y="-3" width="11" height="115" rx="2" opacity="0.05"><animateTransform attributeName="transform" type="translate" values="0,0;-351,0;0,0;-351,0;0,0" dur="8s" keyTimes="0;0.25;0.5;0.75;1" repeatCount="indefinite"/></rect>
 </svg>

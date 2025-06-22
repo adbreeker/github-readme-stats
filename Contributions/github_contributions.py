@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import calendar
 import os
 from dotenv import load_dotenv
+from chars_patterns import generate_text_pattern
 
 # Load environment variables
 load_dotenv()
@@ -195,7 +196,7 @@ def generate_contributions_grid(contributions_data: Dict, theme: str = "light") 
     
     return grid, total_contributions, current_week_days
 
-def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "light") -> str:
+def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7) -> str:
     """Create SVG representation of GitHub contributions"""
     colors = GITHUB_COLORS[theme]
     grid, total_contributions, current_week_days = generate_contributions_grid(contributions_data, theme)
@@ -214,24 +215,22 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     animation_duration = "8s"  # Extended duration for smooth sequence
     middle_column = len(grid) // 2  # Middle of the grid
     line_height = grid_height + 2 * (square_size + square_margin)  # One square taller on each side
-    line_width = square_size
-      # Generate ADBREEKER pattern for text animation
-    adbreeker_patterns = generate_text_pattern("ADBREEKER")
+    line_width = square_size    # Generate custom text pattern for animation
+    text_patterns = generate_text_pattern(text)
     # Calculate total width needed for all letters
-    total_text_width = max(adbreeker_patterns.keys()) + 4 if adbreeker_patterns else 0
+    total_text_width = max(text_patterns.keys()) + 4 if text_patterns else 0
     text_start_column = max(0, middle_column - total_text_width // 2)  # Center the text
     text_start_row = 1  # Start from row 1 (0-6, so 1-5 will be the text area)
-    
-    # Start building SVG with animation
+      # Start building SVG with animation
     svg_parts = [
         f'<svg width="{total_width}" height="{total_height}" xmlns="http://www.w3.org/2000/svg">',
         f'<defs>',
         f'<style>',
         f'.contrib-square {{ stroke-width: 1; stroke: rgba(27,31,35,0.06); rx: 2; ry: 2; }}',
-        f'.eating-line {{ fill: #ff8c00; }}',  # Orange color
+        f'.eating-line {{ fill: {line_color}; }}',  # Customizable line color
         f'</style>',
         f'</defs>',
-    ]      # Add contribution squares with animation
+    ]# Add contribution squares with animation
     for week_idx, week in enumerate(grid):
         for day_idx, day_data in enumerate(week):
             x = padding + week_idx * (square_size + square_margin)
@@ -261,9 +260,8 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                 # Calculate which letter and position within the letter
                 relative_col = week_idx - text_start_column
                 relative_row = day_idx - text_start_row
-                
-                # Find which letter this column belongs to
-                for letter_start_col, letter_pattern in adbreeker_patterns.items():
+                  # Find which letter this column belongs to
+                for letter_start_col, letter_pattern in text_patterns.items():
                     if (relative_col >= letter_start_col and 
                         relative_col < letter_start_col + 4):  # Each letter is 4 cols wide
                         
@@ -392,14 +390,13 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     
     # Add the eating lines (visual indicators) - smooth movement
     line_start_y = padding - (square_size + square_margin)
-    
-    # Left eating line
+      # Left eating line
     left_line_start_x = padding - line_width
     left_line_end_x = padding + middle_column * (square_size + square_margin)
     
     svg_parts.append(
         f'<rect class="eating-line" x="{left_line_start_x}" y="{line_start_y}" '
-        f'width="{line_width}" height="{line_height}" rx="2" opacity="0.7">'
+        f'width="{line_width}" height="{line_height}" rx="2" opacity="{line_alpha}">'
         f'<animateTransform attributeName="transform" type="translate" '
         f'values="0,0;{left_line_end_x - left_line_start_x},0;0,0;{left_line_end_x - left_line_start_x},0;0,0" '
         f'dur="{animation_duration}" '
@@ -407,14 +404,13 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
         f'repeatCount="indefinite"/>'
         f'</rect>'
     )
-    
-    # Right eating line  
+      # Right eating line  
     right_line_start_x = padding + len(grid) * (square_size + square_margin)
     right_line_end_x = padding + middle_column * (square_size + square_margin)
     
     svg_parts.append(
         f'<rect class="eating-line" x="{right_line_start_x}" y="{line_start_y}" '
-        f'width="{line_width}" height="{line_height}" rx="2" opacity="0.7">'
+        f'width="{line_width}" height="{line_height}" rx="2" opacity="{line_alpha}">'
         f'<animateTransform attributeName="transform" type="translate" '
         f'values="0,0;{right_line_end_x - right_line_start_x},0;0,0;{right_line_end_x - right_line_start_x},0;0,0" '
         f'dur="{animation_duration}" '
@@ -427,89 +423,12 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     
     return '\n'.join(svg_parts)
 
-# Letter patterns for ADBREEKER - each letter is 5 squares high, 4 squares wide
-# Each letter is defined as a 5x4 grid (5 rows, 4 columns)
-LETTER_PATTERNS = {
-    'A': [
-        [0, 1, 1, 0],  # Row 0:  ██  
-        [1, 0, 0, 1],  # Row 1: █  █
-        [1, 1, 1, 1],  # Row 2: ████
-        [1, 0, 0, 1],  # Row 3: █  █
-        [1, 0, 0, 1]   # Row 4: █  █
-    ],
-    'D': [
-        [1, 1, 1, 0],  # Row 0: ███ 
-        [1, 0, 0, 1],  # Row 1: █  █
-        [1, 0, 0, 1],  # Row 2: █  █
-        [1, 0, 0, 1],  # Row 3: █  █
-        [1, 1, 1, 0]   # Row 4: ███ 
-    ],
-    'B': [
-        [1, 1, 1, 0],  # Row 0: ███ 
-        [1, 0, 0, 1],  # Row 1: █  █
-        [1, 1, 1, 0],  # Row 2: ███ 
-        [1, 0, 0, 1],  # Row 3: █  █
-        [1, 1, 1, 0]   # Row 4: ███ 
-    ],
-    'R': [
-        [1, 1, 1, 0],  # Row 0: ███ 
-        [1, 0, 0, 1],  # Row 1: █  █
-        [1, 1, 1, 0],  # Row 2: ███ 
-        [1, 0, 1, 0],  # Row 3: █ █ 
-        [1, 0, 0, 1]   # Row 4: █  █
-    ],
-    'E': [
-        [1, 1, 1, 1],  # Row 0: ████
-        [1, 0, 0, 0],  # Row 1: █   
-        [1, 1, 1, 0],  # Row 2: ███ 
-        [1, 0, 0, 0],  # Row 3: █   
-        [1, 1, 1, 1]   # Row 4: ████
-    ],
-    'K': [
-        [1, 0, 0, 1],  # Row 0: █  █
-        [1, 0, 1, 0],  # Row 1: █ █ 
-        [1, 1, 0, 0],  # Row 2: ██  
-        [1, 0, 1, 0],  # Row 3: █ █ 
-        [1, 0, 0, 1]   # Row 4: █  █
-    ],
-    ' ': [
-        [0, 0, 0, 0],  # Row 0:     
-        [0, 0, 0, 0],  # Row 1:     
-        [0, 0, 0, 0],  # Row 2:     
-        [0, 0, 0, 0],  # Row 3:     
-        [0, 0, 0, 0]   # Row 4:     
-    ]
-}
-
-def generate_text_pattern(text: str) -> Dict[str, List[List[int]]]:
-    """Generate a 2D pattern for text display - returns dict with letter positions"""
-    result = {}
-    col_offset = 0
-    
-    for i, char in enumerate(text.upper()):
-        if char in LETTER_PATTERNS:
-            result[col_offset] = LETTER_PATTERNS[char]
-            col_offset += 4  # Each letter is 4 columns wide
-            
-            # Add 1 column space between letters (except after last letter)
-            if i < len(text.upper()) - 1:
-                col_offset += 1
-        else:
-            # Default pattern for unknown characters
-            result[col_offset] = LETTER_PATTERNS['E']  # Use E as default
-            col_offset += 4
-            # Add space after unknown character too
-            if i < len(text.upper()) - 1:
-                col_offset += 1
-    
-    return result
-
-async def generate_contributions_svg(username: str, theme: str = "light") -> str:
+async def generate_contributions_svg(username: str, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7) -> str:
     """Main function to generate contributions SVG"""
     try:
         api = GitHubContributionsAPI()
         contributions_data = await api.fetch_contributions(username)
-        return create_contributions_svg(username, contributions_data, theme)
+        return create_contributions_svg(username, contributions_data, theme, text, line_color, line_alpha)
     except ValueError as e:
         # Token-related errors
         return f'''<svg width="500" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -554,24 +473,48 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) < 2:
-        print("Usage: python github_contributions.py <username> [theme]")
+        print("Usage: python github_contributions.py <username> [theme] [text] [line_color] [line_alpha]")
         print("Theme options: light (default), dark")
+        print("Text: custom text to animate (default: ADBREEKER)")
+        print("Line color: hex color for eating lines (default: #ff8c00)")
+        print("Line alpha: transparency 0.0-1.0 (default: 0.7)")
+        print("Examples:")
+        print("  python github_contributions.py adbreeker")
+        print("  python github_contributions.py adbreeker dark")
+        print("  python github_contributions.py adbreeker light \"HELLO WORLD\"")
+        print("  python github_contributions.py adbreeker dark \"2025\" \"#00ff00\" 0.8")
         sys.exit(1)
     
     username = sys.argv[1]
     theme = sys.argv[2] if len(sys.argv) > 2 else "light"
+    text = sys.argv[3] if len(sys.argv) > 3 else "ADBREEKER"
+    line_color = sys.argv[4] if len(sys.argv) > 4 else "#ff8c00"
+    line_alpha = float(sys.argv[5]) if len(sys.argv) > 5 else 0.7
     
     if theme not in ["light", "dark"]:
         print("Invalid theme. Use 'light' or 'dark'")
         sys.exit(1)
     
+    if not (0.0 <= line_alpha <= 1.0):
+        print("Invalid line alpha. Use a value between 0.0 and 1.0")
+        sys.exit(1)
+    
+    # Validate hex color format
+    if not line_color.startswith('#') or len(line_color) not in [4, 7]:
+        print("Invalid line color. Use hex format like #ff8c00 or #f80")
+        sys.exit(1)
+    
     async def main():
-        svg_content = await generate_contributions_svg(username, theme)
-        filename = f"{username}_contributions_{theme}.svg"
+        svg_content = await generate_contributions_svg(username, theme, text, line_color, line_alpha)
+        # Create filename with text info
+        safe_text = "".join(c for c in text if c.isalnum())[:10]  # Safe filename
+        filename = f"{username}_contributions_{theme}_{safe_text}.svg"
         
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(svg_content)
         
         print(f"Contributions SVG saved as {filename}")
+        print(f"Animated text: '{text}'")
+        print(f"Line color: {line_color}, Alpha: {line_alpha}")
     
     asyncio.run(main())
