@@ -32,11 +32,13 @@ class ContributionsAPIHandler:
         """Handle contributions API request"""
         try:
             # Parse query parameters
-            params = self._parse_query_params(query_string)
-            
-            # Extract parameters
+            params = self._parse_query_params(query_string)            # Extract parameters
             username = params.get('username', '').strip()
             theme = params.get('theme', 'light').lower()
+            text = params.get('text', 'ADBREEKER')
+            line_color = params.get('line_color', '#ff8c00')
+            line_alpha = float(params.get('line_alpha', '0.7'))
+            square_size = int(params.get('square_size', '11'))
             
             # Validate required parameters
             if not username:
@@ -50,8 +52,14 @@ class ContributionsAPIHandler:
             if theme not in ['light', 'dark']:
                 theme = 'light'
             
+            # Validate line_alpha
+            if not (0.0 <= line_alpha <= 1.0):
+                line_alpha = 0.7            # Validate square_size
+            if not (1 <= square_size <= 50):
+                square_size = 11
+            
             # Generate SVG
-            svg_content = await generate_contributions_svg(username, theme)
+            svg_content = await generate_contributions_svg(username, theme, text, line_color, line_alpha, square_size)
             
             # Return successful response
             return {

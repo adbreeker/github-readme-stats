@@ -6,6 +6,7 @@ Creates an SVG representation of GitHub contributions graph exactly like on GitH
 import asyncio
 import aiohttp
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 import calendar
@@ -196,14 +197,13 @@ def generate_contributions_grid(contributions_data: Dict, theme: str = "light") 
     
     return grid, total_contributions, current_week_days
 
-def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7) -> str:
+def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7, square_size: int = 11) -> str:
     """Create SVG representation of GitHub contributions"""
     colors = GITHUB_COLORS[theme]
     grid, total_contributions, current_week_days = generate_contributions_grid(contributions_data, theme)
-    
-    # SVG dimensions - calculate based on actual grid structure
-    square_size = 11
-    square_margin = 2
+      # SVG dimensions - calculate based on actual grid structure
+    # Calculate margin as 20% of square size (maintains GitHub-like spacing at any size)
+    square_margin = max(1, math.ceil(square_size * 0.20))
     padding = 10
       # Calculate total dimensions based on actual grid
     # 52 full weeks + partial current week
@@ -423,12 +423,12 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     
     return '\n'.join(svg_parts)
 
-async def generate_contributions_svg(username: str, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7) -> str:
+async def generate_contributions_svg(username: str, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7, square_size: int = 11) -> str:
     """Main function to generate contributions SVG"""
     try:
         api = GitHubContributionsAPI()
         contributions_data = await api.fetch_contributions(username)
-        return create_contributions_svg(username, contributions_data, theme, text, line_color, line_alpha)
+        return create_contributions_svg(username, contributions_data, theme, text, line_color, line_alpha, square_size)
     except ValueError as e:
         # Token-related errors
         return f'''<svg width="500" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -473,16 +473,19 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) < 2:
-        print("Usage: python github_contributions.py <username> [theme] [text] [line_color] [line_alpha]")
+        print("Usage: python github_contributions.py <username> [theme] [text] [line_color] [line_alpha] [square_size]")
         print("Theme options: light (default), dark")
         print("Text: custom text to animate (default: ADBREEKER)")
         print("Line color: hex color for eating lines (default: #ff8c00)")
         print("Line alpha: transparency 0.0-1.0 (default: 0.7)")
+        print("Square size: size of contribution squares in pixels (default: 11)")
+        print("Note: Spacing between squares automatically scales as 20% of square size (rounded up)")
         print("Examples:")
         print("  python github_contributions.py adbreeker")
         print("  python github_contributions.py adbreeker dark")
         print("  python github_contributions.py adbreeker light \"HELLO WORLD\"")
         print("  python github_contributions.py adbreeker dark \"2025\" \"#00ff00\" 0.8")
+        print("  python github_contributions.py adbreeker light \"HELLO\" \"#ff8c00\" 0.7 15")
         sys.exit(1)
     
     username = sys.argv[1]
@@ -490,6 +493,7 @@ if __name__ == "__main__":
     text = sys.argv[3] if len(sys.argv) > 3 else "ADBREEKER"
     line_color = sys.argv[4] if len(sys.argv) > 4 else "#ff8c00"
     line_alpha = float(sys.argv[5]) if len(sys.argv) > 5 else 0.7
+    square_size = int(sys.argv[6]) if len(sys.argv) > 6 else 11
     
     if theme not in ["light", "dark"]:
         print("Invalid theme. Use 'light' or 'dark'")
@@ -498,14 +502,16 @@ if __name__ == "__main__":
     if not (0.0 <= line_alpha <= 1.0):
         print("Invalid line alpha. Use a value between 0.0 and 1.0")
         sys.exit(1)
-    
-    # Validate hex color format
+      # Validate hex color format
     if not line_color.startswith('#') or len(line_color) not in [4, 7]:
         print("Invalid line color. Use hex format like #ff8c00 or #f80")
+        sys.exit(1)    # Validate square size
+    if not (1 <= square_size <= 50):
+        print("Invalid square size. Use a value between 1 and 50 pixels")
         sys.exit(1)
     
     async def main():
-        svg_content = await generate_contributions_svg(username, theme, text, line_color, line_alpha)
+        svg_content = await generate_contributions_svg(username, theme, text, line_color, line_alpha, square_size)
         # Create filename with text info
         safe_text = "".join(c for c in text if c.isalnum())[:10]  # Safe filename
         filename = f"{username}_contributions_{theme}_{safe_text}.svg"
@@ -516,5 +522,7 @@ if __name__ == "__main__":
         print(f"Contributions SVG saved as {filename}")
         print(f"Animated text: '{text}'")
         print(f"Line color: {line_color}, Alpha: {line_alpha}")
+        print(f"Square size: {square_size}px")
+        print(f"Margin: 20% of square size ({max(1, math.ceil(square_size * 0.20))}px)")
     
     asyncio.run(main())
