@@ -2,7 +2,6 @@
 <style>
 .contrib-square { stroke-width: 1; stroke: rgba(27,31,35,0.06); rx: 2; ry: 2; }
 </style>
-<rect width="707" height="109" fill="#0d1117" rx="6"/>
 <rect x="10" y="10" width="11" height="11" fill="#006d32" class="contrib-square"><title>3 contributions on Jun 23, 2024</title></rect>
 <rect x="10" y="23" width="11" height="11" fill="#0e4429" class="contrib-square"><title>2 contributions on Jun 24, 2024</title></rect>
 <rect x="10" y="36" width="11" height="11" fill="#006d32" class="contrib-square"><title>3 contributions on Jun 25, 2024</title></rect>
@@ -368,10 +367,4 @@
 <rect x="673" y="75" width="11" height="11" fill="#26a641" class="contrib-square"><title>6 contributions on Jun 20, 2025</title></rect>
 <rect x="673" y="88" width="11" height="11" fill="#0e4429" class="contrib-square"><title>1 contribution on Jun 21, 2025</title></rect>
 <rect x="686" y="10" width="11" height="11" fill="#006d32" class="contrib-square"><title>3 contributions on Jun 22, 2025</title></rect>
-<rect x="686" y="23" width="11" height="11" fill="#161b22" class="contrib-square"><title>No data</title></rect>
-<rect x="686" y="36" width="11" height="11" fill="#161b22" class="contrib-square"><title>No data</title></rect>
-<rect x="686" y="49" width="11" height="11" fill="#161b22" class="contrib-square"><title>No data</title></rect>
-<rect x="686" y="62" width="11" height="11" fill="#161b22" class="contrib-square"><title>No data</title></rect>
-<rect x="686" y="75" width="11" height="11" fill="#161b22" class="contrib-square"><title>No data</title></rect>
-<rect x="686" y="88" width="11" height="11" fill="#161b22" class="contrib-square"><title>No data</title></rect>
 </svg>

@@ -99,7 +99,7 @@ class GitHubContributionsAPI:
 
 def get_contributions_year_range() -> Tuple[datetime, datetime]:
     """Get the start and end dates for the contributions calendar
-    GitHub shows exactly 53 weeks ending with the current week"""
+    GitHub shows exactly 53 weeks ending with today (not padded to end of week)"""
     today = datetime.now(timezone.utc).date()
     
     # Calculate current Sunday (GitHub weeks start on Sunday)
@@ -111,22 +111,38 @@ def get_contributions_year_range() -> Tuple[datetime, datetime]:
     # This gives us exactly 53 weeks (52 full weeks + current partial week)
     start_date = current_sunday - timedelta(weeks=52)
     
+    # End date is today (not padded to end of week)
     return datetime.combine(start_date, datetime.min.time(), timezone.utc), \
-           datetime.combine(current_sunday + timedelta(days=6), datetime.max.time(), timezone.utc)
+           datetime.combine(today, datetime.max.time(), timezone.utc)
 
-def generate_contributions_grid(contributions_data: Dict, theme: str = "light") -> Tuple[List[List[Dict]], int]:
-    """Generate a 53x7 grid representing contributions for the past year"""
+def generate_contributions_grid(contributions_data: Dict, theme: str = "light") -> Tuple[List[List[Dict]], int, int]:
+    """Generate contributions grid - 52 full weeks + current partial week"""
     colors = GITHUB_COLORS[theme]
     
-    # Create empty grid (53 weeks x 7 days)
-    grid = [[{"count": 0, "color": colors["bg"], "date": ""} for _ in range(7)] for _ in range(53)]
+    # Get the date range and calculate actual weeks needed
+    start_date, end_date = get_contributions_year_range()
+    today = datetime.now(timezone.utc).date()
+    
+    # Calculate how many days are in the current (partial) week
+    days_since_sunday = (today.weekday() + 1) % 7
+    current_week_days = days_since_sunday + 1  # +1 because we include today
+    
+    # Create grid: 52 full weeks + 1 partial week
+    total_weeks = 53
+    grid = []
+    
+    # Add 52 full weeks
+    for week in range(52):
+        grid.append([{"count": 0, "color": colors["bg"], "date": ""} for _ in range(7)])
+    
+    # Add partial current week (only the days that have passed)
+    current_week = []
+    for day in range(current_week_days):
+        current_week.append({"count": 0, "color": colors["bg"], "date": ""})
+    grid.append(current_week)
     
     total_contributions = contributions_data.get('totalContributions', 0)
-    weeks = contributions_data.get('weeks', [])
-    
-    # Get the date range we're displaying
-    start_date, end_date = get_contributions_year_range()
-      # Process GitHub's weeks data
+    weeks = contributions_data.get('weeks', [])    # Process GitHub's weeks data
     for week_data in weeks:
         days = week_data.get('contributionDays', [])
         
@@ -155,9 +171,11 @@ def generate_contributions_grid(contributions_data: Dict, theme: str = "light") 
             week_idx = days_from_start // 7
             weekday = day.get('weekday', 0)  # 0 = Sunday, 6 = Saturday
             
-            if 0 <= week_idx < 53 and 0 <= weekday < 7:
+            # Check bounds - for the last week, only include days that exist
+            if week_idx < len(grid) and weekday < len(grid[week_idx]):
                 count = day.get('contributionCount', 0)
-                  # Determine color based on contribution count
+                
+                # Determine color based on contribution count
                 if count == 0:
                     color = colors["bg"]
                 elif count <= 2:
@@ -175,33 +193,31 @@ def generate_contributions_grid(contributions_data: Dict, theme: str = "light") 
                     "date": date_str[:10]  # YYYY-MM-DD format
                 }
     
-    return grid, total_contributions
+    return grid, total_contributions, current_week_days
 
 def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "light") -> str:
     """Create SVG representation of GitHub contributions"""
     colors = GITHUB_COLORS[theme]
-    grid, total_contributions = generate_contributions_grid(contributions_data, theme)
+    grid, total_contributions, current_week_days = generate_contributions_grid(contributions_data, theme)
     
-    # SVG dimensions - just the grid
+    # SVG dimensions - calculate based on actual grid structure
     square_size = 11
     square_margin = 2
     padding = 10
     
-    # Calculate total dimensions
-    grid_width = 53 * (square_size + square_margin) - square_margin
+    # Calculate total dimensions based on actual grid
+    # 52 full weeks + partial current week
+    grid_width = 52 * (square_size + square_margin) + (square_size + square_margin) - square_margin
     grid_height = 7 * (square_size + square_margin) - square_margin
     total_width = grid_width + (padding * 2)
-    total_height = grid_height + (padding * 2)    
-    # Background color for the entire SVG
-    bg_color = "#ffffff" if theme == "light" else "#0d1117"
+    total_height = grid_height + (padding * 2)
     
-    # Start building SVG - just the grid
+    # Start building SVG - just the grid with transparent background
     svg_parts = [
         f'<svg width="{total_width}" height="{total_height}" xmlns="http://www.w3.org/2000/svg">',
         f'<style>',
         f'.contrib-square {{ stroke-width: 1; stroke: rgba(27,31,35,0.06); rx: 2; ry: 2; }}',
         f'</style>',
-        f'<rect width="{total_width}" height="{total_height}" fill="{bg_color}" rx="6"/>',
     ]
     
     # Add contribution squares only
