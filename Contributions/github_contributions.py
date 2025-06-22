@@ -210,12 +210,17 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     grid_height = 7 * (square_size + square_margin) - square_margin
     total_width = grid_width + (padding * 2)
     total_height = grid_height + (padding * 2)
-    
-    # Animation parameters
+      # Animation parameters
     animation_duration = "8s"  # Extended duration for smooth sequence
     middle_column = len(grid) // 2  # Middle of the grid
     line_height = grid_height + 2 * (square_size + square_margin)  # One square taller on each side
     line_width = square_size
+      # Generate ADBREEKER pattern for text animation
+    adbreeker_patterns = generate_text_pattern("ADBREEKER")
+    # Calculate total width needed for all letters
+    total_text_width = max(adbreeker_patterns.keys()) + 4 if adbreeker_patterns else 0
+    text_start_column = max(0, middle_column - total_text_width // 2)  # Center the text
+    text_start_row = 1  # Start from row 1 (0-6, so 1-5 will be the text area)
     
     # Start building SVG with animation
     svg_parts = [
@@ -226,8 +231,7 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
         f'.eating-line {{ fill: #ff8c00; }}',  # Orange color
         f'</style>',
         f'</defs>',
-    ]
-      # Add contribution squares with animation
+    ]      # Add contribution squares with animation
     for week_idx, week in enumerate(grid):
         for day_idx, day_data in enumerate(week):
             x = padding + week_idx * (square_size + square_margin)
@@ -246,23 +250,47 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                 tooltip_text = f"{count_text} on {formatted_date}"
             else:
                 tooltip_text = "No data"
+              # Check if this square should be part of ADBREEKER text
+            is_text_square = False
+            text_square_active = False
+            
+            # Check if we're in the text area (5 rows starting from text_start_row)
+            if (day_idx >= text_start_row and day_idx < text_start_row + 5 and
+                week_idx >= text_start_column):
+                
+                # Calculate which letter and position within the letter
+                relative_col = week_idx - text_start_column
+                relative_row = day_idx - text_start_row
+                
+                # Find which letter this column belongs to
+                for letter_start_col, letter_pattern in adbreeker_patterns.items():
+                    if (relative_col >= letter_start_col and 
+                        relative_col < letter_start_col + 4):  # Each letter is 4 cols wide
+                        
+                        letter_col = relative_col - letter_start_col
+                        is_text_square = True
+                        text_square_active = letter_pattern[relative_row][letter_col] == 1
+                        break
             
             # Create the square with eating animation effect
             square_id = f"square-{week_idx}-{day_idx}"
             original_color = day_data["color"]
-            empty_color = colors["bg"]            
+            empty_color = colors["bg"]
+            text_color = colors["level3"]  # Use level 3 color for text
+            
             svg_parts.append(
                 f'<rect id="{square_id}" x="{x}" y="{y}" width="{square_size}" height="{square_size}" '
                 f'fill="{original_color}" class="contrib-square">'
                 f'<title>{tooltip_text}</title>'
-            )
-              # Add eating animation - only for squares with contributions
-            if day_data["count"] > 0:
-                # Correct sequence: 
-                # 0-25%: Lines come in, eat squares
-                # 25-50%: Lines go out (squares stay eaten)
-                # 50-75%: Lines come back in (squares stay eaten)
-                # 75-100%: Lines go out, restore squares
+            )              # Add eating animation - for contribution squares and text squares
+            has_contribution = day_data["count"] > 0
+            
+            if has_contribution or is_text_square:
+                # Animation sequence:
+                # 0-25%: Lines come in, eat original squares (contributions only)
+                # 25-50%: Lines go out, write ADBREEKER text (text squares appear)
+                # 50-75%: Lines come back in, eat ADBREEKER text (text squares disappear)
+                # 75-100%: Lines go out, restore original squares (contributions only)
                 
                 # Calculate timing based on column position
                 total_columns = len(grid)
@@ -286,29 +314,68 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                         eat_progress = 0
                     # Ensure eat_time is never 0 to avoid keyframe issues
                     eat_time = max(0.1, eat_progress * 24.5)  # 0.1-24.5%
-                    restore_time = 75 + (1 - eat_progress) * 24.5  # 75.5-99.5%
-                  # Animation keyframes and timing
-                keyframes = [
-                    0,                # Start: original color
-                    eat_time,         # Just before eating
-                    eat_time + 0.5,   # Just after eating (empty) - smaller gap
-                    75,               # Stay empty until restore phase
-                    restore_time,     # Just before restoring
-                    restore_time + 0.5, # Just after restoring (original) - smaller gap
-                    100               # End: original color
-                ]
-                
-                colors_sequence = [
-                    original_color,  # Start
-                    original_color,  # Just before eating
-                    empty_color,     # Just after eating
-                    empty_color,     # Stay empty through phases 2 and 3
-                    empty_color,     # Just before restoring
-                    original_color,  # Just after restoring
-                    original_color   # End
-                ]
-                
-                # Convert to keyTimes format (0-1)
+                    restore_time = 75 + (1 - eat_progress) * 24.5  # 75.5-99.5%                # Different animation sequences for different square types
+                if is_text_square and text_square_active:
+                    # Text squares: get written by lines during phase 2 (25-50%)
+                    # Calculate when this square gets written based on distance from center
+                    distance_from_center = abs(week_idx - middle_column)
+                    max_distance = middle_column if week_idx <= middle_column else (len(grid) - 1 - middle_column)
+                    
+                    if max_distance > 0:
+                        write_progress = distance_from_center / max_distance
+                    else:
+                        write_progress = 0
+                    
+                    # Text appears as lines move out during phase 2 (25-50%)
+                    write_time = 25 + write_progress * 25  # 25-50%
+                    
+                    keyframes = [
+                        0,                # Start: empty
+                        25,               # Phase 1 end: still empty
+                        write_time,       # Just before writing
+                        write_time + 0.5, # Just after writing (text appears)
+                        50,               # Phase 2 end: text visible
+                        eat_time + 50,    # Just before eating in phase 3
+                        eat_time + 50.5,  # Just after eating (empty)
+                        100               # End: empty
+                    ]
+                    
+                    colors_sequence = [
+                        empty_color,      # Start: empty
+                        empty_color,      # Phase 1 end: still empty
+                        empty_color,      # Just before writing
+                        text_color,       # Text appears (written by line)
+                        text_color,       # Text visible through phase 2
+                        text_color,       # Just before eating
+                        empty_color,      # Just after eating
+                        empty_color       # End: empty
+                    ]
+                elif has_contribution:
+                    # Regular contribution squares: normal eating and restoring
+                    keyframes = [
+                        0,                # Start: original color
+                        eat_time,         # Just before eating
+                        eat_time + 0.5,   # Just after eating (empty)
+                        75,               # Stay empty until restore phase
+                        restore_time,     # Just before restoring
+                        restore_time + 0.5, # Just after restoring (original)
+                        100               # End: original color
+                    ]
+                    
+                    colors_sequence = [
+                        original_color,  # Start
+                        original_color,  # Just before eating
+                        empty_color,     # Just after eating
+                        empty_color,     # Stay empty through phases 2 and 3
+                        empty_color,     # Just before restoring
+                        original_color,  # Just after restoring
+                        original_color   # End
+                    ]
+                else:
+                    # Empty text squares (spaces): stay empty throughout
+                    keyframes = [0, 100]
+                    colors_sequence = [empty_color, empty_color]                
+                # Convert to keyTimes format (0-1) and apply animation
                 key_times = [t/100 for t in keyframes]
                 key_times_str = ';'.join([f'{t:.3f}' for t in key_times])
                 colors_str = ';'.join(colors_sequence)
@@ -359,6 +426,83 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     svg_parts.append('</svg>')
     
     return '\n'.join(svg_parts)
+
+# Letter patterns for ADBREEKER - each letter is 5 squares high, 4 squares wide
+# Each letter is defined as a 5x4 grid (5 rows, 4 columns)
+LETTER_PATTERNS = {
+    'A': [
+        [0, 1, 1, 0],  # Row 0:  ██  
+        [1, 0, 0, 1],  # Row 1: █  █
+        [1, 1, 1, 1],  # Row 2: ████
+        [1, 0, 0, 1],  # Row 3: █  █
+        [1, 0, 0, 1]   # Row 4: █  █
+    ],
+    'D': [
+        [1, 1, 1, 0],  # Row 0: ███ 
+        [1, 0, 0, 1],  # Row 1: █  █
+        [1, 0, 0, 1],  # Row 2: █  █
+        [1, 0, 0, 1],  # Row 3: █  █
+        [1, 1, 1, 0]   # Row 4: ███ 
+    ],
+    'B': [
+        [1, 1, 1, 0],  # Row 0: ███ 
+        [1, 0, 0, 1],  # Row 1: █  █
+        [1, 1, 1, 0],  # Row 2: ███ 
+        [1, 0, 0, 1],  # Row 3: █  █
+        [1, 1, 1, 0]   # Row 4: ███ 
+    ],
+    'R': [
+        [1, 1, 1, 0],  # Row 0: ███ 
+        [1, 0, 0, 1],  # Row 1: █  █
+        [1, 1, 1, 0],  # Row 2: ███ 
+        [1, 0, 1, 0],  # Row 3: █ █ 
+        [1, 0, 0, 1]   # Row 4: █  █
+    ],
+    'E': [
+        [1, 1, 1, 1],  # Row 0: ████
+        [1, 0, 0, 0],  # Row 1: █   
+        [1, 1, 1, 0],  # Row 2: ███ 
+        [1, 0, 0, 0],  # Row 3: █   
+        [1, 1, 1, 1]   # Row 4: ████
+    ],
+    'K': [
+        [1, 0, 0, 1],  # Row 0: █  █
+        [1, 0, 1, 0],  # Row 1: █ █ 
+        [1, 1, 0, 0],  # Row 2: ██  
+        [1, 0, 1, 0],  # Row 3: █ █ 
+        [1, 0, 0, 1]   # Row 4: █  █
+    ],
+    ' ': [
+        [0, 0, 0, 0],  # Row 0:     
+        [0, 0, 0, 0],  # Row 1:     
+        [0, 0, 0, 0],  # Row 2:     
+        [0, 0, 0, 0],  # Row 3:     
+        [0, 0, 0, 0]   # Row 4:     
+    ]
+}
+
+def generate_text_pattern(text: str) -> Dict[str, List[List[int]]]:
+    """Generate a 2D pattern for text display - returns dict with letter positions"""
+    result = {}
+    col_offset = 0
+    
+    for i, char in enumerate(text.upper()):
+        if char in LETTER_PATTERNS:
+            result[col_offset] = LETTER_PATTERNS[char]
+            col_offset += 4  # Each letter is 4 columns wide
+            
+            # Add 1 column space between letters (except after last letter)
+            if i < len(text.upper()) - 1:
+                col_offset += 1
+        else:
+            # Default pattern for unknown characters
+            result[col_offset] = LETTER_PATTERNS['E']  # Use E as default
+            col_offset += 4
+            # Add space after unknown character too
+            if i < len(text.upper()) - 1:
+                col_offset += 1
+    
+    return result
 
 async def generate_contributions_svg(username: str, theme: str = "light") -> str:
     """Main function to generate contributions SVG"""
