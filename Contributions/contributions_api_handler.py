@@ -26,13 +26,14 @@ class ContributionsAPIHandler:
             else:
                 result[key] = ""
         
-        return result
-    
+        return result    
     async def handle_request(self, query_string: str = "") -> Dict[str, any]:
         """Handle contributions API request"""
         try:
             # Parse query parameters
-            params = self._parse_query_params(query_string)            # Extract parameters
+            params = self._parse_query_params(query_string)
+            
+            # Extract parameters
             username = params.get('username', '').strip()
             theme = params.get('theme', 'light').lower()
             text = params.get('text', 'ADBREEKER')
@@ -51,10 +52,12 @@ class ContributionsAPIHandler:
             # Validate theme
             if theme not in ['light', 'dark']:
                 theme = 'light'
-            
+                
             # Validate line_alpha
             if not (0.0 <= line_alpha <= 1.0):
-                line_alpha = 0.7            # Validate square_size
+                line_alpha = 0.7
+            
+            # Validate square_size
             if not (1 <= square_size <= 50):
                 square_size = 11
             
