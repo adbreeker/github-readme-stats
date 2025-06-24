@@ -18,11 +18,12 @@ load_dotenv()
 
 # Import handlers after setting up the path
 try:
-    from api_handlers import StatsAPIHandler, TopLanguagesAPIHandler
+    from api_handlers import StatsAPIHandler, TopLanguagesAPIHandler, ContributionsAPIHandler
     
     # Initialize handlers
     stats_handler = StatsAPIHandler()
     langs_handler = TopLanguagesAPIHandler()
+    contributions_handler = ContributionsAPIHandler()
     HANDLERS_LOADED = True
 except Exception as e:
     print(f"Error loading handlers: {e}")
@@ -83,11 +84,11 @@ def index():
         <div class="status {'ready' if HANDLERS_LOADED else 'error'}">
             <strong>Status:</strong> {status}
         </div>
-        
-        <h2>📊 Available Endpoints</h2>
+          <h2>📊 Available Endpoints</h2>
         <ul>
             <li><strong>/api</strong> - GitHub user statistics card</li>
             <li><strong>/api/top-langs</strong> - Top programming languages card</li>
+            <li><strong>/api/contributions</strong> - Animated GitHub contributions graph</li>
         </ul>
         
         <h2>🎨 Example Usage</h2>        <div class="example">
@@ -106,6 +107,16 @@ def index():
             <img src="/api/top-langs?username=adbreeker&layout=compact&theme=dark" alt="Languages Card Example" style="max-width: 100%;">
             <br><br>
             <p><em>Replace 'adbreeker' with any GitHub username to see their top languages</em></p>
+        </div>
+        
+        <div class="example">
+            <h3>Animated Contributions</h3>
+            <code>/api/contributions?username=adbreeker&theme=dark&text=HELLO&line_color=%23ff8c00</code>
+            <br><br>
+            <img src="/api/contributions?username=adbreeker&theme=dark&text=HELLO&line_color=%23ff8c00" alt="Contributions Example" style="max-width: 100%;">
+            <br><br>
+            <p><em>Animated GitHub contributions graph with custom text overlay</em></p>
+            <p><strong>Parameters:</strong> username, theme (light/dark), text, line_color, line_alpha, square_size, animation_time, pause_time</p>
         </div>
         
         <h2>🔧 Configuration</h2>
@@ -165,6 +176,27 @@ def top_langs_api():
     except Exception as e:
         return Response(
             create_error_svg(300, 120, "Internal Server Error", str(e)[:100]),
+            content_type='image/svg+xml'
+        )
+
+@app.route('/api/contributions')
+@app.route('/api/contributions/')  # Add support for trailing slash
+def contributions_api():
+    """Contributions API endpoint"""
+    if not HANDLERS_LOADED:
+        return Response(
+            create_error_svg(500, 120, "Service Unavailable", "Handlers not loaded"),
+            content_type='image/svg+xml'
+        )
+    
+    try:
+        svg_content, headers = run_async(
+            contributions_handler.handle_request(request.query_string.decode())
+        )
+        return Response(svg_content, content_type=headers['Content-Type'], headers=headers)
+    except Exception as e:
+        return Response(
+            create_error_svg(500, 120, "Internal Server Error", str(e)[:100]),
             content_type='image/svg+xml'
         )
 

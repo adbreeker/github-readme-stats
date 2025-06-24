@@ -125,8 +125,6 @@ def generate_contributions_grid(contributions_data: Dict, theme: str = "light") 
     days_since_sunday = (today.weekday() + 1) % 7
     current_week_days = days_since_sunday + 1  # +1 because we include today
     
-    # Create grid: 52 full weeks + 1 partial week
-    total_weeks = 53
     grid = []
     
     # Add 52 full weeks
@@ -200,18 +198,18 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
       # SVG dimensions - calculate based on actual grid structure
     # Calculate margin as 20% of square size (maintains GitHub-like spacing at any size)
     square_margin = max(1, math.ceil(square_size * 0.20))
-    padding = 10
       # Calculate total dimensions based on actual grid
     # 52 full weeks + partial current week
     grid_width = 52 * (square_size + square_margin) + (square_size + square_margin) - square_margin
     grid_height = 7 * (square_size + square_margin) - square_margin
-    total_width = grid_width + (padding * 2)
-    total_height = grid_height + (padding * 2)
-      # Animation parameters
-    animation_duration = f"{animation_time+pause_time}s"  # Extended duration for smooth sequence
-    middle_column = len(grid) // 2  # Middle of the grid
     line_height = grid_height + 2 * (square_size + square_margin)  # One square taller on each side
     line_width = square_size    # Generate custom text pattern for animation
+    padding = square_margin + line_width  # Padding around the grid
+    total_width = grid_width + 2 * padding  # Add space for eating line
+    total_height = line_height
+    # Animation parameters
+    animation_duration = f"{animation_time+pause_time}s"  # Extended duration for smooth sequence
+    middle_column = len(grid) // 2  # Middle of the grid
     text_patterns = generate_text_pattern(text)
     # Calculate total width needed for all letters
     total_text_width = max(text_patterns.keys()) + 4 if text_patterns else 0
@@ -402,29 +400,28 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     
     # Add the eating lines (visual indicators) - smooth movement
     line_start_y = padding - (square_size + square_margin)
+    line_end_x = padding  + middle_column * (square_size + square_margin)
     # Left eating line
-    left_line_start_x = padding - line_width
-    left_line_end_x = padding + middle_column * (square_size + square_margin)
+    left_line_start_x = padding - line_width - square_margin
     
     svg_parts.append(
         f'<rect class="eating-line" x="{left_line_start_x}" y="{line_start_y}" '
         f'width="{line_width}" height="{line_height}" rx="2" opacity="{line_alpha}">'
         f'<animateTransform attributeName="transform" type="translate" '
-        f'values="0,0;{left_line_end_x - left_line_start_x},0;0,0;{left_line_end_x - left_line_start_x},0;0,0;0,0" '
+        f'values="0,0;{line_end_x - left_line_start_x},0;0,0;{line_end_x - left_line_start_x},0;0,0;0,0" '
         f'dur="{animation_duration}" '
         f'keyTimes="{lines_key_times_str}" '
         f'repeatCount="indefinite"/>'
         f'</rect>'
     )
     # Right eating line  
-    right_line_start_x = padding + len(grid) * (square_size + square_margin)
-    right_line_end_x = padding + middle_column * (square_size + square_margin)
+    right_line_start_x = padding + grid_width + square_margin
 
     svg_parts.append(
         f'<rect class="eating-line" x="{right_line_start_x}" y="{line_start_y}" '
         f'width="{line_width}" height="{line_height}" rx="2" opacity="{line_alpha}">'
         f'<animateTransform attributeName="transform" type="translate" '
-        f'values="0,0;{right_line_end_x - right_line_start_x},0;0,0;{right_line_end_x - right_line_start_x},0;0,0;0,0" '
+        f'values="0,0;{line_end_x - right_line_start_x},0;0,0;{line_end_x - right_line_start_x},0;0,0;0,0" '
         f'dur="{animation_duration}" '
         f'keyTimes="{lines_key_times_str}" '
         f'repeatCount="indefinite"/>'
@@ -435,12 +432,12 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     
     return '\n'.join(svg_parts)
 
-async def generate_contributions_svg(username: str, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7, square_size: int = 11) -> str:
+async def generate_contributions_svg(username: str, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7, square_size: int = 11, animation_time: float = 8.0, pause_time: float = 0.0) -> str:
     """Main function to generate contributions SVG"""
     try:
         api = GitHubContributionsAPI()
         contributions_data = await api.fetch_contributions(username)
-        return create_contributions_svg(username, contributions_data, theme, text, line_color, line_alpha, square_size)
+        return create_contributions_svg(username, contributions_data, theme, text, line_color, line_alpha, square_size, animation_time, pause_time)
     except ValueError as e:
         # Token-related errors
         return f'''<svg width="500" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -483,14 +480,15 @@ async def generate_contributions_svg(username: str, theme: str = "light", text: 
 # CLI usage example
 if __name__ == "__main__":
     import sys
-    
     if len(sys.argv) < 2:
-        print("Usage: python github_contributions.py <username> [theme] [text] [line_color] [line_alpha] [square_size]")
+        print("Usage: python github_contributions.py <username> [theme] [text] [line_color] [line_alpha] [square_size] [animation_time] [pause_time]")
         print("Theme options: light (default), dark")
         print("Text: custom text to animate (default: ADBREEKER)")
         print("Line color: hex color for eating lines (default: #ff8c00)")
         print("Line alpha: transparency 0.0-1.0 (default: 0.7)")
         print("Square size: size of contribution squares in pixels (default: 11)")
+        print("Animation time: duration of animation in seconds (default: 8.0)")
+        print("Pause time: pause between animation cycles in seconds (default: 0.0)")
         print("Note: Spacing between squares automatically scales as 20% of square size (rounded up)")
         print("Examples:")
         print("  python github_contributions.py adbreeker")
@@ -498,14 +496,16 @@ if __name__ == "__main__":
         print("  python github_contributions.py adbreeker light \"HELLO WORLD\"")
         print("  python github_contributions.py adbreeker dark \"2025\" \"#00ff00\" 0.8")
         print("  python github_contributions.py adbreeker light \"HELLO\" \"#ff8c00\" 0.7 15")
+        print("  python github_contributions.py adbreeker dark \"CODE\" \"#ff0000\" 0.9 12 10.0 2.0")
         sys.exit(1)
-    
     username = sys.argv[1]
     theme = sys.argv[2] if len(sys.argv) > 2 else "light"
     text = sys.argv[3] if len(sys.argv) > 3 else "ADBREEKER"
     line_color = sys.argv[4] if len(sys.argv) > 4 else "#ff8c00"
     line_alpha = float(sys.argv[5]) if len(sys.argv) > 5 else 0.7
     square_size = int(sys.argv[6]) if len(sys.argv) > 6 else 11
+    animation_time = float(sys.argv[7]) if len(sys.argv) > 7 else 8.0
+    pause_time = float(sys.argv[8]) if len(sys.argv) > 8 else 0.0
     
     if theme not in ["light", "dark"]:
         print("Invalid theme. Use 'light' or 'dark'")
@@ -513,17 +513,18 @@ if __name__ == "__main__":
     
     if not (0.0 <= line_alpha <= 1.0):
         print("Invalid line alpha. Use a value between 0.0 and 1.0")
-        sys.exit(1)
-      # Validate hex color format
+        sys.exit(1)    # Validate hex color format
     if not line_color.startswith('#') or len(line_color) not in [4, 7]:
         print("Invalid line color. Use hex format like #ff8c00 or #f80")
-        sys.exit(1)    # Validate square size
+        sys.exit(1)
+    
+    # Validate square size
     if not (1 <= square_size <= 50):
         print("Invalid square size. Use a value between 1 and 50 pixels")
         sys.exit(1)
     
     async def main():
-        svg_content = await generate_contributions_svg(username, theme, text, line_color, line_alpha, square_size)
+        svg_content = await generate_contributions_svg(username, theme, text, line_color, line_alpha, square_size, animation_time, pause_time)
         # Create filename with text info
         safe_text = "".join(c for c in text if c.isalnum())[:10]  # Safe filename
         filename = f"{username}_contributions_{theme}_{safe_text}.svg"
