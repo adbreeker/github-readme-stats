@@ -11,6 +11,7 @@ import os
 
 from github_stats import GitHubStatsAPI, GitHubStats, LanguageData, GitHubAPIError, STATS_QUERY, TOP_LANGS_QUERY
 from svg_renderer import create_stats_card, create_top_languages_card
+from github_contributions import generate_contributions_svg
 
 class StatsAPIHandler:
     """Handler for GitHub stats API endpoint"""
@@ -313,3 +314,110 @@ class TopLanguagesAPIHandler:
             <text x="15" y="60" class="error-text">{message}</text>
         </svg>
         '''
+
+class ContributionsAPIHandler:
+    """Handler for GitHub contributions API endpoint"""
+    
+    def _parse_query_params(self, query_string: str) -> Dict[str, str]:
+        """Parse URL query parameters"""
+        if not query_string:
+            return {}
+        
+        parsed = parse_qs(query_string, keep_blank_values=True)
+        # Convert lists to single values
+        result = {}
+        for key, values in parsed.items():
+            if values:
+                result[key] = unquote(values[0])
+            else:
+                result[key] = ""
+        
+        return result
+    
+    def _parse_boolean(self, value: str) -> bool:
+        """Parse boolean from string"""
+        if not value:
+            return False
+        return value.lower() in ('true', '1', 'yes', 'on')
+    
+    async def handle_request(self, query_string: str):
+        """Handle contributions API request"""
+        try:
+            params = self._parse_query_params(query_string)
+            
+            # Required parameter
+            username = params.get('username', '').strip()
+            if not username:
+                raise ValueError("Username is required")
+            
+            # Optional parameters with defaults
+            theme = params.get('theme', 'light').lower()
+            if theme not in ['light', 'dark']:
+                theme = 'light'
+            
+            text = params.get('text', 'ADBREEKER')
+            line_color = params.get('line_color', '#ff8c00')
+            line_alpha = float(params.get('line_alpha', '0.7'))
+            square_size = int(params.get('square_size', '11'))
+            animation_time = float(params.get('animation_time', '8.0'))
+            pause_time = float(params.get('pause_time', '0.0'))
+            
+            # Validate parameters
+            if not (0.0 <= line_alpha <= 1.0):
+                line_alpha = 0.7
+            
+            if not (1 <= square_size <= 50):
+                square_size = 11
+            
+            if not line_color.startswith('#'):
+                line_color = '#ff8c00'
+            
+            if animation_time < 0:
+                animation_time = 8.0
+            
+            if pause_time < 0:
+                pause_time = 0.0
+            
+            # Generate SVG
+            svg_content = await generate_contributions_svg(
+                username=username,
+                theme=theme,
+                text=text,
+                line_color=line_color,
+                line_alpha=line_alpha,
+                square_size=square_size,
+                animation_time=animation_time,
+                pause_time=pause_time
+            )
+            
+            # Set cache headers
+            headers = {
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control': 'public, max-age=1800',  # 30 minutes cache
+            }
+            
+            return svg_content, headers
+            
+        except Exception as e:
+            error_message = str(e)
+            if len(error_message) > 100:
+                error_message = error_message[:97] + "..."
+            
+            error_svg = f'''
+            <svg width="500" height="120" viewBox="0 0 500 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    .error-title {{ font: 600 16px 'Segoe UI', Ubuntu, Sans-Serif; fill: #e74c3c; }}
+                    .error-text {{ font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: #586069; }}
+                </style>
+                <rect width="500" height="120" fill="#fffefe" stroke="#e4e2e2" stroke-width="1" rx="4"/>
+                <text x="15" y="35" class="error-title">Contributions Error</text>
+                <text x="15" y="60" class="error-text">{error_message}</text>
+            </svg>
+            '''
+            
+            headers = {
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control': 'no-cache',
+            }
+            
+            return error_svg, headers
