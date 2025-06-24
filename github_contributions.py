@@ -202,11 +202,12 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     # 52 full weeks + partial current week
     grid_width = 52 * (square_size + square_margin) + (square_size + square_margin) - square_margin
     grid_height = 7 * (square_size + square_margin) - square_margin
-    line_height = grid_height + 2 * (square_size + square_margin)  # One square taller on each side
-    line_width = square_size    # Generate custom text pattern for animation
-    padding = square_margin + line_width  # Padding around the grid
-    total_width = grid_width + 2 * padding  # Add space for eating line
-    total_height = line_height
+    line_height = grid_height + square_size   # One square taller on each side
+    line_width = square_size/2    # Generate custom text pattern for animation
+    padding_x = square_margin + line_width  # Padding around the grid
+    padding_y = (square_margin + square_size) / 2
+    total_width = grid_width + 2 * padding_x  # Add space for eating line
+    total_height = grid_height + 2 * padding_y  # Add space for eating line
     # Animation parameters
     animation_duration = f"{animation_time+pause_time}s"  # Extended duration for smooth sequence
     middle_column = len(grid) // 2  # Middle of the grid
@@ -231,8 +232,8 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     print(f"Phase time: {phase_time:.2f}s, Small delay: {small_delay:.2f}s")
     for week_idx, week in enumerate(grid):
         for day_idx, day_data in enumerate(week):
-            x = padding + week_idx * (square_size + square_margin)
-            y = padding + day_idx * (square_size + square_margin)
+            x = padding_x + week_idx * (square_size + square_margin)
+            y = padding_y + day_idx * (square_size + square_margin)
             
             # Format the tooltip text
             if day_data["date"]:
@@ -399,10 +400,10 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     lines_key_times_str = ';'.join([f'{t:.3f}' for t in lines_key_times])
     
     # Add the eating lines (visual indicators) - smooth movement
-    line_start_y = padding - (square_size + square_margin)
-    line_end_x = padding  + middle_column * (square_size + square_margin)
+    line_start_y = (total_height - line_height) / 2
+    line_end_x = padding_x  + middle_column * (square_size + square_margin)
     # Left eating line
-    left_line_start_x = padding - line_width - square_margin
+    left_line_start_x = padding_x - line_width - square_margin
     
     svg_parts.append(
         f'<rect class="eating-line" x="{left_line_start_x}" y="{line_start_y}" '
@@ -415,7 +416,7 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
         f'</rect>'
     )
     # Right eating line  
-    right_line_start_x = padding + grid_width + square_margin
+    right_line_start_x = padding_x + grid_width + square_margin
 
     svg_parts.append(
         f'<rect class="eating-line" x="{right_line_start_x}" y="{line_start_y}" '
