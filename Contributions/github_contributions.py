@@ -28,8 +28,6 @@ GITHUB_COLORS = {
         "level2": "#40c463",  # 3-5 contributions  
         "level3": "#30a14e",  # 6-8 contributions
         "level4": "#216e39",  # 9+ contributions
-        "text": "#656d76",
-        "border": "#d1d9e0"
     },
     "dark": {
         "bg": "#161b22",  # Empty/no contributions
@@ -37,8 +35,6 @@ GITHUB_COLORS = {
         "level2": "#006d32",  # 3-5 contributions
         "level3": "#26a641",  # 6-8 contributions
         "level4": "#39d353",  # 9+ contributions
-        "text": "#7d8590",
-        "border": "#21262d"
     }
 }
 
@@ -197,7 +193,7 @@ def generate_contributions_grid(contributions_data: Dict, theme: str = "light") 
     
     return grid, total_contributions, current_week_days
 
-def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "light", text: str = "ADBREEKER", line_color: str = "#ff8c00", line_alpha: float = 0.7, square_size: int = 11) -> str:
+def create_contributions_svg(username: str, contributions_data: Dict, theme: str = "dark", text: str = "ADBREEKER", line_color: str = "#000000", line_alpha: float = 0.5, square_size: int = 11, animation_time: float = 8.0, pause_time: float = 0.0) -> str:
     """Create SVG representation of GitHub contributions"""
     colors = GITHUB_COLORS[theme]
     grid, total_contributions, current_week_days = generate_contributions_grid(contributions_data, theme)
@@ -212,7 +208,7 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
     total_width = grid_width + (padding * 2)
     total_height = grid_height + (padding * 2)
       # Animation parameters
-    animation_duration = "8s"  # Extended duration for smooth sequence
+    animation_duration = f"{animation_time+pause_time}s"  # Extended duration for smooth sequence
     middle_column = len(grid) // 2  # Middle of the grid
     line_height = grid_height + 2 * (square_size + square_margin)  # One square taller on each side
     line_width = square_size    # Generate custom text pattern for animation
@@ -231,6 +227,10 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
         f'</style>',
         f'</defs>',
     ]# Add contribution squares with animation
+
+    phase_time = 100 * (1/4) * (animation_time / (animation_time + pause_time))  # Total time of single phase
+    small_delay = 0.25 / middle_column * phase_time # quater of the time for each column to move
+    print(f"Phase time: {phase_time:.2f}s, Small delay: {small_delay:.2f}s")
     for week_idx, week in enumerate(grid):
         for day_idx, day_data in enumerate(week):
             x = padding + week_idx * (square_size + square_margin)
@@ -279,42 +279,38 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
             svg_parts.append(
                 f'<rect id="{square_id}" x="{x}" y="{y}" width="{square_size}" height="{square_size}" '
                 f'fill="{original_color}" class="contrib-square">'
-                f'<title>{tooltip_text}</title>'
-            )              # Add eating animation - for contribution squares and text squares
+                f'<title>{tooltip_text}</title>'            )
+            
+            # Add eating animation - for contribution squares and text squares
             has_contribution = day_data["count"] > 0
             
             if has_contribution or is_text_square:
-                # Animation sequence:
-                # 0-25%: Lines come in, eat original squares (contributions only)
-                # 25-50%: Lines go out, write ADBREEKER text (text squares appear)
-                # 50-75%: Lines come back in, eat ADBREEKER text (text squares disappear)
-                # 75-100%: Lines go out, restore original squares (contributions only)
+                # Animation sequence (updated for 6-phase line movement):
+                # Start
+                # Phase 1: Lines come in, eat original squares (contributions only)
+                # Phase 2: Lines go out, write text (text squares appear)
+                # Phase 3: Lines come back in, eat text (text squares disappear)
+                # Phase 4: Lines go out, restore original squares (contributions only)
+                # Pause
                 
                 # Calculate timing based on column position
                 total_columns = len(grid)
                 
                 if week_idx <= middle_column:
                     # Left line territory (columns 0 to middle_column inclusive)
-                    if middle_column > 0:
-                        eat_progress = week_idx / middle_column
-                    else:
-                        eat_progress = 0
-                    # Ensure eat_time is never 0 to avoid keyframe issues
-                    eat_time = max(0.1, eat_progress * 24.5)  # 0.1-24.5%
-                    restore_time = 75 + (1 - eat_progress) * 24.5  # 75.5-99.5%
+                    eat_progress = week_idx / middle_column
                 else:
                     # Right line territory (columns after middle_column)
                     columns_from_right = total_columns - 1 - week_idx
                     max_columns_right = total_columns - middle_column - 1
-                    if max_columns_right > 0:
-                        eat_progress = columns_from_right / max_columns_right
-                    else:
-                        eat_progress = 0
-                    # Ensure eat_time is never 0 to avoid keyframe issues
-                    eat_time = max(0.1, eat_progress * 24.5)  # 0.1-24.5%
-                    restore_time = 75 + (1 - eat_progress) * 24.5  # 75.5-99.5%                # Different animation sequences for different square types
+                    eat_progress = columns_from_right / max_columns_right
+
+                eat_time = eat_progress * phase_time  
+                restore_time = 3 * phase_time + (1 - eat_progress) * phase_time   
+                
+                # Different animation sequences for different square types
                 if is_text_square and text_square_active:
-                    # Text squares: get written by lines during phase 2 (25-50%)
+                    # Text squares: get written by lines during phase 2 (20-40%)
                     # Calculate when this square gets written based on distance from center
                     distance_from_center = abs(week_idx - middle_column)
                     max_distance = middle_column if week_idx <= middle_column else (len(grid) - 1 - middle_column)
@@ -324,19 +320,24 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                     else:
                         write_progress = 0
                     
-                    # Text appears as lines move out during phase 2 (25-50%)
-                    write_time = 25 + write_progress * 25  # 25-50%
+                    # Text appears as lines move out during phase 2 (20-40%)
+                    write_time = phase_time + write_progress * phase_time
                     
                     keyframes = [
                         0,                # Start: empty
-                        25,               # Phase 1 end: still empty
+                        1 * phase_time,               # Phase 1 end: still empty
                         write_time,       # Just before writing
-                        write_time + 0.5, # Just after writing (text appears)
-                        50,               # Phase 2 end: text visible
-                        eat_time + 50,    # Just before eating in phase 3
-                        eat_time + 50.5,  # Just after eating (empty)
-                        100               # End: empty
+                        write_time + small_delay, # Just after writing (text appears)
+                        2 * phase_time,               # Phase 2 end: text visible
+                        eat_time + 2 * phase_time,    # Just before eating in phase 3 (40-60%)
+                        eat_time + 2 * phase_time + small_delay,  # Just after eating (empty)
+                        4 * phase_time,               # End: empty (pause phase)
+                        100
                     ]
+                    
+                    # Clamp intermediate keyframes to ensure valid sequence
+                    for i in range(1, len(keyframes) - 1):
+                        keyframes[i] = max(keyframes[i-1], min(keyframes[i], keyframes[i+1]))
                     
                     colors_sequence = [
                         empty_color,      # Start: empty
@@ -346,19 +347,25 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                         text_color,       # Text visible through phase 2
                         text_color,       # Just before eating
                         empty_color,      # Just after eating
-                        empty_color       # End: empty
+                        empty_color,       # End: empty
+                        empty_color       # Pause phase: stay empty
                     ]
                 elif has_contribution:
-                    # Regular contribution squares: normal eating and restoring
+                    # Regular contribution squares: normal eating and restoring (updated timing)
                     keyframes = [
                         0,                # Start: original color
-                        eat_time,         # Just before eating
-                        eat_time + 0.5,   # Just after eating (empty)
-                        75,               # Stay empty until restore phase
-                        restore_time,     # Just before restoring
-                        restore_time + 0.5, # Just after restoring (original)
-                        100               # End: original color
+                        eat_time,         # Just before eating (phase 1: 0-20%)
+                        eat_time + small_delay,   # Just after eating (empty)
+                        3 * phase_time,               # Stay empty until restore phase (phase 4: 60-80%)
+                        restore_time,     # Just before restoring 
+                        restore_time + small_delay, # Just after restoring (original)
+                        4 * phase_time,               # End: original color (pause phase)
+                        100
                     ]
+
+                    # Clamp intermediate keyframes to ensure valid sequence
+                    for i in range(1, len(keyframes) - 1):
+                        keyframes[i] = max(keyframes[i-1], min(keyframes[i], keyframes[i+1]))
                     
                     colors_sequence = [
                         original_color,  # Start
@@ -367,12 +374,13 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                         empty_color,     # Stay empty through phases 2 and 3
                         empty_color,     # Just before restoring
                         original_color,  # Just after restoring
-                        original_color   # End
+                        original_color,   # End
+                        original_color,
                     ]
                 else:
                     # Empty text squares (spaces): stay empty throughout
-                    keyframes = [0, 100]
-                    colors_sequence = [empty_color, empty_color]                
+                    keyframes = [0, 100]  # Updated to match pause phase
+                    colors_sequence = [empty_color, empty_color]
                 # Convert to keyTimes format (0-1) and apply animation
                 key_times = [t/100 for t in keyframes]
                 key_times_str = ';'.join([f'{t:.3f}' for t in key_times])
@@ -383,14 +391,18 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
                     f'values="{colors_str}" '
                     f'dur="{animation_duration}" '
                     f'keyTimes="{key_times_str}" '
-                    f'repeatCount="indefinite"/>'
+                    f'repeatCount="indefinite"/>'                
                 )
             
             svg_parts.append('</rect>')
+
+    lines_key_frames = [0, 1 * phase_time, 2 * phase_time, 3 * phase_time, 4 * phase_time, 100]
+    lines_key_times = [t/100 for t in lines_key_frames]
+    lines_key_times_str = ';'.join([f'{t:.3f}' for t in lines_key_times])
     
     # Add the eating lines (visual indicators) - smooth movement
     line_start_y = padding - (square_size + square_margin)
-      # Left eating line
+    # Left eating line
     left_line_start_x = padding - line_width
     left_line_end_x = padding + middle_column * (square_size + square_margin)
     
@@ -398,23 +410,23 @@ def create_contributions_svg(username: str, contributions_data: Dict, theme: str
         f'<rect class="eating-line" x="{left_line_start_x}" y="{line_start_y}" '
         f'width="{line_width}" height="{line_height}" rx="2" opacity="{line_alpha}">'
         f'<animateTransform attributeName="transform" type="translate" '
-        f'values="0,0;{left_line_end_x - left_line_start_x},0;0,0;{left_line_end_x - left_line_start_x},0;0,0" '
+        f'values="0,0;{left_line_end_x - left_line_start_x},0;0,0;{left_line_end_x - left_line_start_x},0;0,0;0,0" '
         f'dur="{animation_duration}" '
-        f'keyTimes="0;0.25;0.5;0.75;1" '
+        f'keyTimes="{lines_key_times_str}" '
         f'repeatCount="indefinite"/>'
         f'</rect>'
     )
-      # Right eating line  
+    # Right eating line  
     right_line_start_x = padding + len(grid) * (square_size + square_margin)
     right_line_end_x = padding + middle_column * (square_size + square_margin)
-    
+
     svg_parts.append(
         f'<rect class="eating-line" x="{right_line_start_x}" y="{line_start_y}" '
         f'width="{line_width}" height="{line_height}" rx="2" opacity="{line_alpha}">'
         f'<animateTransform attributeName="transform" type="translate" '
-        f'values="0,0;{right_line_end_x - right_line_start_x},0;0,0;{right_line_end_x - right_line_start_x},0;0,0" '
+        f'values="0,0;{right_line_end_x - right_line_start_x},0;0,0;{right_line_end_x - right_line_start_x},0;0,0;0,0" '
         f'dur="{animation_duration}" '
-        f'keyTimes="0;0.25;0.5;0.75;1" '
+        f'keyTimes="{lines_key_times_str}" '
         f'repeatCount="indefinite"/>'
         f'</rect>'
     )
