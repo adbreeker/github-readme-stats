@@ -238,6 +238,43 @@ query userInfo($login: String!) {
 }
 """
 
+STATS_QUERY_ALL_TIME = """
+query userInfo($login: String!, $from: DateTime!, $to: DateTime!) {
+  user(login: $login) {
+    name
+    login
+    contributionsCollection(from: $from, to: $to) {
+      totalCommitContributions
+      totalPullRequestReviewContributions
+    }
+    repositoriesContributedTo(first: 1, contributionTypes: [COMMIT, ISSUE, PULL_REQUEST, REPOSITORY]) {
+      totalCount
+    }
+    pullRequests(first: 1) {
+      totalCount
+    }
+    mergedPullRequests: pullRequests(states: MERGED, first: 1) {
+      totalCount
+    }
+    openIssues: issues(states: OPEN, first: 1) {
+      totalCount
+    }
+    closedIssues: issues(states: CLOSED, first: 1) {
+      totalCount
+    }
+    repositories(first: 100, ownerAffiliations: OWNER, orderBy: {direction: DESC, field: STARGAZERS}) {
+      totalCount
+      nodes {
+        name
+        stargazers {
+          totalCount
+        }
+      }
+    }
+  }
+}
+"""
+
 TOP_LANGS_QUERY = """
 query userInfo($login: String!) {
   user(login: $login) {
@@ -260,4 +297,4 @@ query userInfo($login: String!) {
 """
 
 # Export the main classes and functions
-__all__ = ['GitHubStatsAPI', 'GitHubStats', 'LanguageData', 'THEMES', 'ICONS']
+__all__ = ['GitHubStatsAPI', 'GitHubStats', 'LanguageData', 'THEMES', 'ICONS', 'STATS_QUERY', 'STATS_QUERY_ALL_TIME', 'TOP_LANGS_QUERY']
